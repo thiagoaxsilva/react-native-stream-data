@@ -50,13 +50,22 @@ function AuthProvider({ children }: AuthProviderData) {
       setIsLoggingIn(true);
       const REDIRECT_URI = makeRedirectUri({ useProxy: true });
       const RESPONSE_TYPE = "token";
-      const SCOPE = "openid user:read:email user:read:follows";
+      const SCOPE = encodeURI("openid user:read:email user:read:follows");
       const FORCE_VERIFY = true;
       const STATE = generateRandom(30);
 
-      const authUrl = `${twitchEndpoints.authorization}?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&response_type=${RESPONSE_TYPE}&scope=${SCOPE}&force_verify=${FORCE_VERIFY}&state=${STATE}`;
+      const authUrl =
+        twitchEndpoints.authorization +
+        `?client_id=${CLIENT_ID}` +
+        `&redirect_uri=${REDIRECT_URI}` +
+        `&response_type=${RESPONSE_TYPE}` +
+        `&scope=${SCOPE}` +
+        `&force_verify=${FORCE_VERIFY}` +
+        `&state=${STATE}`;
 
-      const response = startAsync(authUrl);
+      const response = startAsync({
+        authUrl,
+      });
 
       if (
         response.type === "success" &&
@@ -88,19 +97,25 @@ function AuthProvider({ children }: AuthProviderData) {
 
   async function signOut() {
     try {
-      // set isLoggingOut to true
-      // call revokeAsync with access_token, client_id and twitchEndpoint revocation
+      setIsLoggingOut(true);
+      revokeAsync(
+        {
+          token: userToken,
+          clientId: CLIENT_ID,
+        },
+        twitchEndpoints.revocation
+      );
     } catch (error) {
     } finally {
-      // set user state to an empty User object
-      // set userToken state to an empty string
-      // remove "access_token" from request's authorization header
-      // set isLoggingOut to false
+      setUser({} as User);
+      setUserToken("");
+      delete api.defaults.headers.authorization;
+      setIsLoggingOut(false);
     }
   }
 
   useEffect(() => {
-    // add client_id to request's "Client-Id" header
+    api.defaults.headers["Client-Id"] = CLIENT_ID;
   }, []);
 
   return (
